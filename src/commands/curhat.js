@@ -170,7 +170,7 @@ const PATTERNS = [
             'bingung soal apa? mungkin bisa aku bantu',
             'gpp ga tau. ga harus tau semua',
             'yuk figure it out bareng',
-            'take ur time, no rush',
+            'take ur time',
         ],
     },
     {
