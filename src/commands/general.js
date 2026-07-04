@@ -12,9 +12,7 @@ function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/**
- * Handle "halo" command — Gen Z girlfriend greeting.
- */
+
 function handleHalo() {
     const jam = getJamWIB();
 
@@ -24,7 +22,7 @@ function handleHalo() {
             'morning ay! semoga harinya oke',
             'pagiii. jgn lupa sarapan ya',
             'hai! baru bangun?',
-            'morning. minum air dulu gih sebelum ngapa-ngapain',
+            'morning. minum air dulu ya sebelum ngapa-ngapain',
         ]);
     } else if (jam >= 11 && jam < 15) {
         return pick([

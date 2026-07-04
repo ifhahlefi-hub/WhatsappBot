@@ -1,0 +1,163 @@
+{
+  "users": {
+    "190452204622056@lid": {
+      "todo": [],
+      "pengeluaran": [],
+      "chatHistory": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Thank you for registering for WhatsApp number: 6288287296716.\nOur system will send you a verification link shortly to confirm this is really you.\nPowered by Wablas.com"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "udh dah, blm dikirim linknya nih"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yea! Your account has been activated by WhatsApp\n\nName: Irzaaa\nEmail: fhahlefi123@gmail.con\nWhatsApp Number: 6288287296716\n\n📞 *Support / CS* : \nhttps://wa.me/6281223922679\n\nRegards,\nSupport Team ~ sby"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "udh aktiff nih, dah bisa dipake"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "scan qr code kak"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "wkwk, dah di scan nih"
+            }
+          ]
+        }
+      ]
+    },
+    "246561657360455@lid": {
+      "todo": [
+        "bangun tidur"
+      ],
+      "pengeluaran": [
+        {
+          "nominal": 10000,
+          "keterangan": "Nasi Goreng",
+          "waktu": "16/4/2026, 22.04.07"
+        },
+        {
+          "nominal": 40000,
+          "keterangan": "Makan siang",
+          "waktu": "17/6/2026, 12.08.30"
+        },
+        {
+          "nominal": 180000,
+          "keterangan": "Wifi",
+          "waktu": "17/6/2026, 12.10.17"
+        }
+      ],
+      "chatHistory": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Tes"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "wa kwk apa yang mau dibicarakan sayang?"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Ahaha"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "ya allah lu jgn cengengesan aja, ngomong apa donk"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Haloo"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "halo jg, ay. lagi apa nih?"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Siang"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "siang jg, sayang. makan siang belum?"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Export excel"
+            }
+          ]
+        },
+        {
+          "role": "model",
+          "parts": [
+            {
+              "text": "udh selesai blm, ay?"
+            }
+          ]
+        }
+      ],
+      "batasHarian": 100000
+    }
+  }
+}

@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --font-inter: "Inter", sans-serif;
+  --font-heading: "Plus Jakarta Sans", sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-inter);
+    background-color: #f8fafc;
+  }
+}
+
+.heading-font {
+  font-family: var(--font-heading);
+}
+
+/* Custom scrollbar to match the modern look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@keyframes rollingAnim {
+  0%, 15% { transform: translateY(0); }
+  20%, 35% { transform: translateY(-16.66%); }
+  40%, 55% { transform: translateY(-33.33%); }
+  60%, 75% { transform: translateY(-50%); }
+  80%, 95% { transform: translateY(-66.66%); }
+  100% { transform: translateY(-83.33%); }
+}
+
+.rolling-wrapper { 
+  display: inline-block; 
+  position: relative; 
+  height: 2.5rem; 
+  overflow: hidden; 
+  vertical-align: middle; 
+}
+
+.rolling-container { 
+  display: block; 
+  animation: rollingAnim 12s infinite ease-in-out; 
+}
+
+.rolling-text-item { 
+  height: 2.5rem; 
+  display: flex; 
+  align-items: center; 
+  white-space: nowrap; 
+}

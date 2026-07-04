@@ -9,10 +9,11 @@ const {
 const pino = require('pino');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
+const QRCodeImage = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 
-const { loadDB, getUserData, getUserCount, clearChatHistory } = require('./database');
+const { db, getUserDataByJid, updateLastActive } = require('./database');
 const { handleHalo, handleJam } = require('./commands/general');
 const { handleMenu } = require('./commands/menu');
 const { handleTodoList, handleTodoAdd, handleTodoDone, handleResetTodo } = require('./commands/todo');
@@ -20,7 +21,8 @@ const { handleCatat, handleTotal, handleHapusPengeluaran, handleEditPengeluaran,
 const { exportTodoExcel, exportFinanceExcel, exportFinancePDF, cleanupExports } = require('./commands/export');
 const { handleCurhat, handleFallback } = require('./commands/curhat');
 const { chatWithAI, isAIAvailable } = require('./ai');
-const { startAdmin } = require('./admin');
+const { startServer, getIO } = require('./server');
+const { forceAcquireLock } = require('./utils/process-manager');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..');
 const AUTH_DIR = path.join(DATA_DIR, 'auth_info');
@@ -31,11 +33,31 @@ console.log('   WhatsApp Daily Assistant Bot');
 console.log('   Powered by Irza Fhahlefi');
 console.log('========================================\n');
 
-loadDB();
-console.log(`[bot] ${getUserCount()} user loaded`);
+// Prevent duplicate bot processes
+if (!forceAcquireLock('bot')) {
+  console.error('[FATAL] Tidak bisa mengakuisisi lock. Bot mungkin sudah berjalan.');
+  process.exit(1);
+}
+
+// loadDB and getUserCount removed, DB logic is now handled in server.js
 console.log(`[bot] AI ${isAIAvailable() ? 'active (Groq)' : 'inactive'}`);
 
-startAdmin();
+// Start Admin API server (async, auto port detection)
+// Skip jika BOT_ONLY=true (saat dijalankan via npm run dev, server.js berjalan terpisah)
+if (process.env.BOT_ONLY === 'true') {
+  console.log('[INFO] BOT_ONLY mode — Admin API dijalankan terpisah via server.js');
+  // Still init DB for bot queries
+  const { initDB } = require('./database');
+  initDB();
+} else {
+  startServer().then(({ io }) => {
+    console.log('[INFO] Admin API server started successfully');
+    console.log('[INFO] WhatsApp Bot berjalan di port ' + (process.env.BOT_PORT || 'N/A') + ' (bot process)');
+  }).catch((err) => {
+    console.error('[ERROR] Failed to start Admin API:', err.message);
+    console.error('[ERROR] Bot tetap berjalan tanpa Admin API.');
+  });
+}
 
 function extractText(message) {
     if (!message) return null;
@@ -118,6 +140,10 @@ async function startBot() {
         if (qr) {
             console.log('\n[auth] Scan QR:\n');
             qrcode.generate(qr, { small: true });
+            QRCodeImage.toFile('./qr.png', qr, { width: 400, errorCorrectionLevel: 'H' }, (err) => {
+                if (err) console.error('[auth] Failed to save QR image', err);
+                else console.log('[auth] QR code saved to qr.png');
+            });
         }
 
         if (connection === 'close') {
@@ -154,16 +180,33 @@ async function startBot() {
 
                 const sender = msg.key.remoteJid;
                 const name = msg.pushName || 'Unknown';
-                const userData = getUserData(sender);
-
+                const profilePicUrl = await sock.profilePictureUrl(sender).catch(() => null);
+                
+                const user = getUserDataByJid(sender);
+                updateLastActive(sender, name, profilePicUrl);
+                
                 console.log(`[msg] ${name}: ${text || '[image]'}`);
+
+                // Insert user message to chat history
+                if (text) {
+                    db.prepare("INSERT INTO chat_history (user_id, message_type, message, sender, status) VALUES (?, ?, ?, ?, ?)").run(
+                        user.id, 'text', text, 'user', 'Terkirim'
+                    );
+                    
+                    const io = getIO();
+                    if (io) io.emit('chat_update', { userId: user.id });
+                }
+
+                const userData = user; // fallback for commands
 
                 const command = routeCommand(text || '', userData);
 
                 // Special: reset chat history
                 if (text?.trim().toLowerCase() === 'reset chat') {
-                    clearChatHistory(sender);
+                    db.prepare("UPDATE chat_history SET deleted_at = CURRENT_TIMESTAMP WHERE user_id = ?").run(user.id);
                     await sock.sendMessage(sender, { text: 'Oke, kita mulai fresh lagi ya' });
+                    const io = getIO();
+                    if (io) io.emit('chat_update', { userId: user.id });
                     continue;
                 }
                 if (command && text) {
@@ -171,15 +214,38 @@ async function startBot() {
                         await sendExport(sock, sender, command.handler, userData);
                     } else {
                         await sock.sendMessage(sender, { text: command });
+                        db.prepare("INSERT INTO chat_history (user_id, message_type, message, sender, status) VALUES (?, ?, ?, ?, ?)").run(
+                            user.id, 'text', command, 'bot', 'Terkirim'
+                        );
+                        const io = getIO();
+                        if (io) io.emit('chat_update', { userId: user.id });
                     }
                     continue;
                 }
 
                 let imageBuffer = null;
                 let reply = null;
+                let aiUsage = null;
+                let aiModel = null;
 
                 if (isAIAvailable() && text) {
-                    reply = await chatWithAI(sender, text);
+                    const historyData = db.prepare(`
+                        SELECT sender, message 
+                        FROM chat_history 
+                        WHERE user_id = ? AND deleted_at IS NULL 
+                        ORDER BY timestamp DESC LIMIT 20
+                    `).all(user.id);
+                    const history = historyData.reverse().map(h => ({
+                        role: h.sender === 'bot' ? 'assistant' : 'user',
+                        content: h.message || ''
+                    }));
+                    
+                    const aiResult = await chatWithAI(text, history);
+                    if (aiResult) {
+                        reply = aiResult.reply;
+                        aiUsage = aiResult.usage;
+                        aiModel = aiResult.model;
+                    }
                 }
 
                 if (!reply && !isAIAvailable() && text) {
@@ -188,6 +254,28 @@ async function startBot() {
 
                 if (reply) {
                     await sock.sendMessage(sender, { text: reply });
+                    
+                    if (aiUsage) {
+                        db.prepare(`
+                            INSERT INTO chat_history (user_id, message_type, message, sender, status, prompt_tokens, completion_tokens, total_tokens, ai_model) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `).run(user.id, 'text', reply, 'bot', 'Terkirim', aiUsage.prompt_tokens, aiUsage.completion_tokens, aiUsage.total_tokens, aiModel);
+                        
+                        db.prepare(`
+                            UPDATE users 
+                            SET prompt_tokens = prompt_tokens + ?, 
+                                completion_tokens = completion_tokens + ?, 
+                                total_tokens = total_tokens + ? 
+                            WHERE id = ?
+                        `).run(aiUsage.prompt_tokens, aiUsage.completion_tokens, aiUsage.total_tokens, user.id);
+                    } else {
+                        db.prepare("INSERT INTO chat_history (user_id, message_type, message, sender, status) VALUES (?, ?, ?, ?, ?)").run(
+                            user.id, 'text', reply, 'bot', 'Terkirim'
+                        );
+                    }
+                    
+                    const io = getIO();
+                    if (io) io.emit('chat_update', { userId: user.id });
                 }
 
             } catch (err) {

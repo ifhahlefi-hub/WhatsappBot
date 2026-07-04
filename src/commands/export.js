@@ -7,6 +7,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
+const { db } = require('../database');
 
 const EXPORT_DIR = path.join(__dirname, '..', '..', 'exports');
 
@@ -81,25 +82,32 @@ function borderRow(row, colCount, top, bottom) {
 function groupByDate(pengeluaran) {
     const byDate = {};
     pengeluaran.forEach(item => {
-        const date = item.waktu.split(',')[0]?.trim() || 'Tidak diketahui';
-        if (!byDate[date]) byDate[date] = [];
-        byDate[date].push(item);
+        // Fallback for created_at formatting
+        let dateObj = new Date(item.created_at);
+        if (isNaN(dateObj.getTime())) dateObj = new Date();
+        
+        // Format to YYYY-MM-DD
+        const dateStr = dateObj.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+        const displayDate = dateStr; // e.g. 2026-06-17
+
+        if (!byDate[displayDate]) byDate[displayDate] = [];
+        byDate[displayDate].push(item);
     });
     return byDate;
 }
 
-function extractTime(waktu) {
-    const timePart = waktu.split(',')[1]?.trim() || '';
-    if (timePart) return timePart.split('.').slice(0, 2).join(':');
-    return '';
+function extractTime(createdAt) {
+    let dateObj = new Date(createdAt);
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
 }
 
 // =============================================
 // TODO EXPORT (Excel)
 // =============================================
 
-async function exportTodoExcel(db) {
-    if (!db.todo || db.todo.length === 0) return null;
+async function exportTodoExcel(userData) {
+    return null; // Todo features were disabled during SQLite migration
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'WhatsApp Assistant Bot';
@@ -173,8 +181,9 @@ async function exportTodoExcel(db) {
 // FINANCE EXPORT — EXCEL
 // =============================================
 
-async function exportFinanceExcel(db) {
-    if (!db.pengeluaran || db.pengeluaran.length === 0) return null;
+async function exportFinanceExcel(userData) {
+    const expenses = db.prepare("SELECT * FROM expenses WHERE created_by = ? AND deleted_at IS NULL").all(userData.id);
+    if (!expenses || expenses.length === 0) return null;
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'WhatsApp Assistant Bot';
@@ -200,8 +209,11 @@ async function exportFinanceExcel(db) {
     // Period
     sheet.mergeCells('A2:E2');
     const periodCell = sheet.getCell('A2');
-    const dates = db.pengeluaran.map(e => e.waktu.split(',')[0]?.trim()).filter(Boolean);
-    const uniqueDates = [...new Set(dates)];
+    const dates = expenses.map(e => {
+        let d = new Date(e.created_at);
+        return isNaN(d.getTime()) ? null : d.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+    }).filter(Boolean);
+    const uniqueDates = [...new Set(dates)].sort();
     let periodText = '';
     if (uniqueDates.length === 1) periodText = `Periode: ${uniqueDates[0]}`;
     else if (uniqueDates.length > 1) periodText = `Periode: ${uniqueDates[0]} s/d ${uniqueDates[uniqueDates.length - 1]}`;
@@ -230,8 +242,8 @@ async function exportFinanceExcel(db) {
     }
 
     // Data
-    const byDate = groupByDate(db.pengeluaran);
-    const dateKeys = Object.keys(byDate);
+    const byDate = groupByDate(expenses);
+    const dateKeys = Object.keys(byDate).sort();
     const hasMultipleDates = dateKeys.length > 1;
     let globalIndex = 0;
 
@@ -245,10 +257,10 @@ async function exportFinanceExcel(db) {
 
             const row = sheet.addRow([
                 idx === 0 ? date : '',
-                extractTime(item.waktu),
+                extractTime(item.created_at),
                 globalIndex,
-                item.keterangan,
-                item.nominal,
+                item.description,
+                item.amount,
             ]);
 
             row.font = FONT.body;
@@ -277,7 +289,7 @@ async function exportFinanceExcel(db) {
     });
 
     // Grand Total
-    const grandTotal = db.pengeluaran.reduce((sum, e) => sum + e.nominal, 0);
+    const grandTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
     const totalRow = sheet.addRow(['', '', '', 'TOTAL PENGELUARAN', grandTotal]);
     totalRow.font = FONT.total;
     totalRow.height = 28;
@@ -300,9 +312,9 @@ async function exportFinanceExcel(db) {
     }
 
     const summaryItems = [
-        ['Jumlah Transaksi', db.pengeluaran.length],
+        ['Jumlah Transaksi', expenses.length],
         ['Total Pengeluaran', grandTotal],
-        ['Rata-rata / Transaksi', Math.round(grandTotal / db.pengeluaran.length)],
+        ['Rata-rata / Transaksi', Math.round(grandTotal / expenses.length)],
         ['Jumlah Hari', dateKeys.length],
     ];
 
@@ -343,8 +355,9 @@ async function exportFinanceExcel(db) {
 // FINANCE EXPORT — PDF
 // =============================================
 
-async function exportFinancePDF(db) {
-    if (!db.pengeluaran || db.pengeluaran.length === 0) return null;
+async function exportFinancePDF(userData) {
+    const expenses = db.prepare("SELECT * FROM expenses WHERE created_by = ? AND deleted_at IS NULL").all(userData.id);
+    if (!expenses || expenses.length === 0) return null;
 
     return new Promise((resolve, reject) => {
         const fileName = `Laporan_Keuangan_${getTimestamp()}.pdf`;
@@ -438,8 +451,11 @@ async function exportFinancePDF(db) {
         });
 
         // Period
-        const dates = db.pengeluaran.map(e => e.waktu.split(',')[0]?.trim()).filter(Boolean);
-        const uniqueDates = [...new Set(dates)];
+        const dates = expenses.map(e => {
+            let d = new Date(e.created_at);
+            return isNaN(d.getTime()) ? null : d.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+        }).filter(Boolean);
+        const uniqueDates = [...new Set(dates)].sort();
         let periodText = '';
         if (uniqueDates.length === 1) periodText = `Periode: ${uniqueDates[0]}`;
         else if (uniqueDates.length > 1) periodText = `Periode: ${uniqueDates[0]} s/d ${uniqueDates[uniqueDates.length - 1]}`;
@@ -467,11 +483,11 @@ async function exportFinancePDF(db) {
 
         // ── DATA ROWS ──
 
-        const byDate = groupByDate(db.pengeluaran);
-        const dateKeys = Object.keys(byDate);
+        const byDate = groupByDate(expenses);
+        const dateKeys = Object.keys(byDate).sort();
         const hasMultipleDates = dateKeys.length > 1;
         let globalIndex = 0;
-        const grandTotal = db.pengeluaran.reduce((sum, e) => sum + e.nominal, 0);
+        const grandTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
 
         dateKeys.forEach((date) => {
             const entries = byDate[date];
@@ -479,7 +495,7 @@ async function exportFinancePDF(db) {
 
             entries.forEach((item, idx) => {
                 globalIndex++;
-                dateSubtotal += item.nominal;
+                dateSubtotal += item.amount;
 
                 if (currentY > doc.page.height - 100) {
                     doc.addPage();
@@ -488,10 +504,10 @@ async function exportFinancePDF(db) {
 
                 currentY = drawTableRow(currentY, [
                     idx === 0 ? date : '',
-                    extractTime(item.waktu),
+                    extractTime(item.created_at),
                     globalIndex,
-                    item.keterangan,
-                    formatRupiah(item.nominal),
+                    item.description,
+                    formatRupiah(item.amount),
                 ], { height: 22 });
             });
 
@@ -556,9 +572,9 @@ async function exportFinancePDF(db) {
         currentY += 24;
 
         const summaryItems = [
-            ['Jumlah Transaksi', String(db.pengeluaran.length)],
+            ['Jumlah Transaksi', String(expenses.length)],
             ['Total Pengeluaran', formatRupiah(grandTotal)],
-            ['Rata-rata / Transaksi', formatRupiah(Math.round(grandTotal / db.pengeluaran.length))],
+            ['Rata-rata / Transaksi', formatRupiah(Math.round(grandTotal / expenses.length))],
             ['Jumlah Hari', String(dateKeys.length)],
         ];
 

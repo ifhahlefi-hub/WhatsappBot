@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "D:\\Belajar\\whatsapp-bot\\logs\\.2812fec5807aa0fd280d70e1a6339897c11b1e76-audit.json",
+    "files": [
+        {
+            "date": 1781687430328,
+            "name": "D:\\Belajar\\whatsapp-bot\\logs\\auth-2026-06-17.log",
+            "hash": "07b16a20a4ab902a17c5c138918b9742ad81d50dc951898ac5f850c38d82a067"
+        }
+    ],
+    "hashType": "sha256"
+}
