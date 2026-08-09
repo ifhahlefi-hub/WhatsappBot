@@ -19,8 +19,8 @@ Bot WhatsApp berbasis Node.js yang berfungsi sebagai asisten harian personal & p
 
 - **Runtime:** Node.js (LTS)
 - **WhatsApp API:** @whiskeysockets/baileys
-- **Database:** File-based JSON (`db.json`)
-- **Logger:** Pino
+- **Database:** SQLite (`database.sqlite`)
+- **Logger:** Winston + Daily Rotate
 
 ## 📁 Struktur Proyek
 
@@ -28,14 +28,16 @@ Bot WhatsApp berbasis Node.js yang berfungsi sebagai asisten harian personal & p
 whatsapp-bot/
 ├── src/
 │   ├── bot.js              # Entry point, koneksi & routing
-│   ├── database.js          # Load & save JSON database
+│   ├── database.js         # Initialize SQLite schema + migrations
 │   └── commands/
-│       ├── general.js       # Command: halo, jam
-│       ├── menu.js          # Command: menu
-│       ├── todo.js          # Command: todo, done
-│       └── finance.js       # Command: catat, total
-├── auth_info/               # Session WhatsApp (auto-generated)
-├── db.json                  # Database file
+│       ├── general.js      # Command: halo, jam
+│       ├── menu.js         # Command: menu
+│       ├── todo.js         # Command: todo, done
+│       └── finance.js     # Command: catat, total
+├── auth_info/              # Session WhatsApp (auto-generated)
+├── database.sqlite         # Main SQLite database
+├── database.sqlite-wal     # SQLite WAL runtime file
+├── database.sqlite-shm     # SQLite SHM runtime file
 ├── package.json
 ├── .gitignore
 └── README.md
@@ -166,7 +168,7 @@ npm start
 ```
 
 ### Database
-Semua data tersimpan di `db.json`. File ini otomatis dibuat saat pertama kali bot berjalan.
+Data aplikasi tersimpan di SQLite. File utama adalah `database.sqlite`, dengan file WAL/SHM yang dibentuk secara runtime saat proses berjalan.
 
 ## 🔮 Roadmap (Future Improvements)
 
