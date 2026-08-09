@@ -2,5 +2,16 @@ node_modules/
 auth_info/
 db.json
 .env
+.env.local
+.env.*
+!.env.example
 exports/
+logs/
+qr.png
 *.log
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-journal
+.DS_Store

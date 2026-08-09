@@ -8,7 +8,34 @@ const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+const envPath = path.join(__dirname, '..', '.env');
+const envExamplePath = path.join(__dirname, '..', '.env.example');
+if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
+  fs.copyFileSync(envExamplePath, envPath);
+}
+
+dotenv.config({ path: envPath });
+
+const defaultEnv = {
+  ADMIN_PORT: '3001',
+  BOT_PORT: '3000',
+  SOCKET_CORS_ORIGIN: '*',
+  JWT_SECRET: 'dev-jwt-secret-change-me',
+  JWT_REFRESH_SECRET: 'dev-jwt-refresh-secret-change-me',
+  JWT_EXPIRE: '30m',
+  JWT_REFRESH_EXPIRE: '7d',
+  RATE_LIMIT_WINDOW: '15',
+  RATE_LIMIT_MAX: '100',
+  DATABASE_PATH: 'database.sqlite',
+  SUPER_ADMIN_EMAIL: 'superadmin@localhost',
+  NODE_ENV: 'development'
+};
+
+for (const [key, value] of Object.entries(defaultEnv)) {
+  if (!process.env[key]) {
+    process.env[key] = value;
+  }
+}
 
 const loggers = require('./utils/logger');
 const { initDB } = require('./database');
@@ -18,7 +45,7 @@ const authRoutes = require('./routes/auth');
 const exportRoutes = require('./routes/export');
 
 // Admin API port - pisah dari Bot port
-const PREFERRED_ADMIN_PORT = parseInt(process.env.ADMIN_PORT, 10);
+const PREFERRED_ADMIN_PORT = parseInt(process.env.ADMIN_PORT, 10) || 3001;
 
 let io; // global io instance
 let actualPort = null; // port yang benar-benar digunakan
@@ -84,11 +111,8 @@ async function startServer() {
     });
   });
 
-  const PORT = process.env.ADMIN_PORT;
-  if (!PORT) {
-    console.error('[FATAL] ADMIN_PORT is not defined in .env');
-    process.exit(1);
-  }
+  const PORT = process.env.ADMIN_PORT || process.env.PORT || String(PREFERRED_ADMIN_PORT);
+  process.env.ADMIN_PORT = PORT;
   actualPort = PORT;
   
   server.listen(PORT, '0.0.0.0', () => {
