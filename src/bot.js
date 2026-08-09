@@ -171,7 +171,10 @@ async function startBot() {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
+        if (!type || !['notify', 'append'].includes(type)) {
+            console.log(`[msg] Ignoring messages.upsert type=${type || 'unknown'}`);
+            return;
+        }
 
         for (const msg of messages) {
             try {
