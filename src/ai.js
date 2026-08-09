@@ -10,9 +10,11 @@ function readEnv(key) {
     return match ? match[1].trim() : '';
 }
 
-const GROQ_KEY = readEnv('GROQ_API_KEY');
+const GROQ_KEY_RAW = readEnv('GROQ_API_KEY');
+const GROQ_KEY = (GROQ_KEY_RAW || '').trim();
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const PLACEHOLDER_KEYS = ['REPLACE_WITH_YOUR_GROQ_KEY', 'YOUR_GROQ_API_KEY'];
 
 const PERSONA = `Lo itu temen WA gw, Gen Z yang kerja kantoran di Jakarta. Bukan asisten, bukan bot.
 
@@ -83,7 +85,10 @@ async function chatWithAI(text, history = []) {
 }
 
 function isAIAvailable() {
-    return !!GROQ_KEY;
+    const key = (process.env.GROQ_API_KEY || GROQ_KEY || '').trim();
+    if (!key) return false;
+    if (PLACEHOLDER_KEYS.some(p => key.toUpperCase() === p.toUpperCase())) return false;
+    return true;
 }
 
 module.exports = { chatWithAI, isAIAvailable };

@@ -258,7 +258,7 @@ async function startBot() {
                     }
                 }
 
-                if (!reply && !isAIAvailable() && text) {
+                if (!reply && text) {
                     reply = handleCurhat(text) || handleFallback(text);
                 }
 
