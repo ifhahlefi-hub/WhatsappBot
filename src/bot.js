@@ -149,8 +149,15 @@ async function startBot() {
         if (connection === 'close') {
             const code = new Boom(lastDisconnect?.error)?.output?.statusCode;
             if (code === DisconnectReason.loggedOut) {
-                console.log('[conn] Logged out. Hapus auth_info dan scan ulang.');
-                process.exit(1);
+                console.log('[conn] Logged out. Menghapus auth_info dan memulai scan ulang.');
+                try {
+                    fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+                    console.log('[conn] auth_info berhasil dibersihkan.');
+                } catch (err) {
+                    console.error('[conn] Gagal membersihkan auth_info:', err.message);
+                }
+                setTimeout(startBot, 3000);
+                return;
             }
             setTimeout(startBot, 3000);
         }
