@@ -41,27 +41,38 @@ whatsapp-bot/
 └── README.md
 ```
 
-## 🚀 Instalasi
+## 🚀 Quick Start (Clone-ready)
 
-### 1. Clone / Masuk ke Folder Project
+### 1. Clone repo
 
 ```bash
-cd whatsapp-bot
+git clone https://github.com/ifhahlefi-hub/WhatsappBot.git
+cd WhatsappBot
 ```
 
-### 2. Install Dependencies
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Jalankan Bot
+### 3. Siapkan environment
+
+Project membaca konfigurasi dari file [.env](.env) saat runtime. Kalau file itu belum ada, Anda bisa copy dari template yang tersedia di [.env.example](.env.example):
+
+```bash
+copy .env.example .env
+```
+
+Edit file [.env](.env) dan isi nilai yang memang perlu Anda ganti, terutama `GROQ_API_KEY` bila mau AI aktif. Jika key tetap placeholder, bot tetap bisa start, tetapi AI akan masuk mode `inactive` sesuai log [src/ai.js](src/ai.js#L13-L14).
+
+### 4. Jalankan bot
 
 ```bash
 npm start
 ```
 
-### 4. Scan QR Code
+### 5. Scan QR Code
 
 Setelah bot berjalan, QR code akan muncul di terminal. Scan menggunakan WhatsApp kamu:
 1. Buka **WhatsApp** di HP
@@ -69,7 +80,11 @@ Setelah bot berjalan, QR code akan muncul di terminal. Scan menggunakan WhatsApp
 3. Ketuk **Link a Device**
 4. Scan QR code di terminal
 
-### 5. Mulai Gunakan!
+### 6. Login admin
+
+Setelah database diinisialisasi, super admin akan dibuat otomatis berdasarkan `SUPER_ADMIN_EMAIL` dari `.env`.
+
+### 7. Mulai gunakan bot
 
 Kirim pesan ke nomor WhatsApp yang terhubung untuk mencoba bot.
 
