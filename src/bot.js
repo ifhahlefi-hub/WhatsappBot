@@ -263,6 +263,7 @@ async function startBot() {
                 }
 
                 if (reply) {
+                    console.log(`[bot] reply to ${sender}: ${reply}`);
                     await sock.sendMessage(sender, { text: reply });
                     
                     if (aiUsage) {
