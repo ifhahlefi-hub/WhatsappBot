@@ -47,50 +47,56 @@ function cleanReply(text) {
 }
 
 async function chatWithAI(text, history = []) {
-  if (!GROQ_KEY) return null;
+  if (!GROQ_KEY || !text || !text.trim()) return null;
 
-  const request = () =>
-    fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + GROQ_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: PERSONA },
-          ...history,
-          { role: "user", content: text },
-        ],
-        max_tokens: 2000,
-        temperature: 0.92,
-      }),
-    });
+  try {
+    const request = () =>
+      fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + GROQ_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: "system", content: PERSONA },
+            ...history,
+            { role: "user", content: text },
+          ],
+          max_tokens: 500,
+          temperature: 0.92,
+        }),
+      });
 
-  let res = await request();
-  if (res.status === 429) {
-    await new Promise((r) => setTimeout(r, 6000));
-    res = await request();
-  }
+    let res = await request();
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 6000));
+      res = await request();
+    }
 
-  if (!res.ok) {
-    console.error("[AI] Fetch error:", res.status, await res.text());
+    if (!res.ok) {
+      console.error("[AI] Fetch error:", res.status, await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    const reply = cleanReply(content?.trim());
+    const usage = data?.usage || {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+    const model = data?.model || GROQ_MODEL;
+
+    if (!reply) return null;
+
+    return { reply, usage, model };
+  } catch (err) {
+    console.error("[AI] chatWithAI failed:", err?.message || err);
     return null;
   }
-
-  const data = await res.json();
-  const reply = cleanReply(data.choices?.[0]?.message?.content?.trim());
-  const usage = data.usage || {
-    prompt_tokens: 0,
-    completion_tokens: 0,
-    total_tokens: 0,
-  };
-  const model = data.model || GROQ_MODEL;
-
-  if (!reply) return null;
-
-  return { reply, usage, model };
 }
 
 function isAIAvailable() {
